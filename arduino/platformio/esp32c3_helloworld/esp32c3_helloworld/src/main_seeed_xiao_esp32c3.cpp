@@ -29,14 +29,22 @@ bfs::SbusData data;
 MX1508 motorA(PIN_MOTOR1_A, PIN_MOTOR1_B, CH_MOTOR1_1, CH_MOTOR1_2); // Default-  8 bit resoluion at 2500 Hz
 MX1508 motorB(PIN_MOTOR2_A, PIN_MOTOR2_B, CH_MOTOR2_1, CH_MOTOR2_2); // Default-  8 bit resoluion at 2500 Hz
 
-long sbusPrevPacketTime;
+u_long sbusPrevPacketTime;
 bool sbusLost = false;
 
 #define SBUS_VAL_MIN 176
 #define SBUS_VAL_MAX 1800
 #define SBUS_VAL_CENTER 988
 #define SBUS_VAL_DEADBAND 5
-#define SBUS_LOST_TIMEOUT 1000
+#define SBUS_LOST_TIMEOUT 100
+
+#define TX_ROLL 0
+#define TX_PITCH 1
+#define TX_THROTTLE 2
+#define TX_YAW 3
+
+#define SBUS_PACKET_PRINT_INTERVAL 100 // ms
+u_long sbusPacketPrintPrevTime = 0;
 
 void setup()
 {
@@ -58,22 +66,29 @@ void loop()
   if (sbus_rx.Read())
   {
     sbusPrevPacketTime = millis();
-    sbusLost = false;
+    if (sbusLost)
+    {
+      Serial.println("Regained SBUS connection");
+      sbusLost = false;
+    }
 
     /* Grab the received data */
     data = sbus_rx.data();
+
     /* Display the received data */
-    for (int8_t i = 0; i < data.NUM_CH; i++)
+    if (millis() - sbusPacketPrintPrevTime > SBUS_PACKET_PRINT_INTERVAL)
     {
       if (Serial)
       {
-        Serial.print(data.ch[i]);
-        Serial.print("\t");
+        for (int8_t i = 0; i < data.NUM_CH; i++)
+        {
+          Serial.print(data.ch[i]);
+          Serial.print("\t");
+        }
+        Serial.println();
       }
-    }
-    if (Serial)
-    {
-      Serial.println();
+      
+      sbusPacketPrintPrevTime = millis();
     }
   }
 
@@ -82,7 +97,7 @@ void loop()
   {
     if (!sbusLost)
     {
-      Serial.print("No SBUS packet received for 1 second >> setting first 4 channels to ");
+      Serial.print("Lost SBUS connection >> setting first 4 channels to ");
       Serial.println((SBUS_VAL_MIN + SBUS_VAL_MAX) / 2);
       sbusLost = true;
     }
@@ -100,8 +115,13 @@ void loop()
     }
   }
 
-  long motor1Val = constrain(map(data.ch[2], SBUS_VAL_MIN, SBUS_VAL_MAX, -50, 50), -255, 255);
-  long motor2Val = constrain(map(data.ch[3], SBUS_VAL_MIN, SBUS_VAL_MAX, -50, 50), -255, 255);
+  int16_t motor1Val = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, -50, 50), -255, 255);
+  int16_t motor2Val = constrain(map(data.ch[TX_PITCH], SBUS_VAL_MIN, SBUS_VAL_MAX, -50, 50), -255, 255);
+
+  int16_t throttleVal = motor2Val;
+  float mix = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 1000), 0, 1000) / 1000.0;
+  motor1Val = (throttleVal * (1.0 - mix)) * 2;
+  motor2Val = (throttleVal * mix) * 2;
 
   // MOTOR 1
   if (abs(motor1Val) < SBUS_VAL_DEADBAND)
@@ -132,5 +152,5 @@ void loop()
   }
 
   // delay a little.
-  delay(1000 / 150);
+  delay(1000 / 200);
 }
