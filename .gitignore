@@ -1,3 +1,5 @@
 
 .DS_Store
 *autosave*.noisette
+*jlcpcb*
+**/Teensy_32_tx_breakout_board-backups/*
