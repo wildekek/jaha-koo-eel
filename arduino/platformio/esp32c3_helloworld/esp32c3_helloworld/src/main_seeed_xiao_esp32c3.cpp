@@ -5,10 +5,23 @@
 #include <HardwareSerial.h>
 #include <Adafruit_NeoPixel.h>
 #include <FastLED.h>
+#include "Adafruit_TLC59711.h"
+#include <SPI.h>
 
 // NeoPixel
-#define PIN D8      // On Trinket or Gemma, suggest changing this to 1
-#define NUMPIXELS 2 // Popular NeoPixel ring size
+#define PIN D9
+#define NUMPIXELS 3
+
+// How many boards do you have chained?
+#define NUM_TLC59711 1
+
+#define data_pin D10
+#define clock_pin D8
+
+Adafruit_TLC59711 tlc = Adafruit_TLC59711(NUM_TLC59711, clock_pin, data_pin);
+
+#define MOUTH_LED_OUT D9
+
 // When setting up the NeoPixel library, we tell it how many pixels,
 // and which pin to use to send signals. Note that for older NeoPixel
 // strips you might need to change the third parameter -- see the
@@ -25,13 +38,13 @@ bfs::SbusData data;
 
 #define PIN_MOTOR1_A D5
 #define PIN_MOTOR1_B D4
-#define CH_MOTOR1_1 2 // 16 Channels (0-15) are availible
-#define CH_MOTOR1_2 3 // Make sure each pin is a different channel and not in use by other PWM devices (servos, LED's, etc)
+#define CH_MOTOR1_1 0 // 16 Channels (0-15) are availible
+#define CH_MOTOR1_2 1 // Make sure each pin is a different channel and not in use by other PWM devices (servos, LED's, etc)
 
 #define PIN_MOTOR2_A D3
 #define PIN_MOTOR2_B D2
-#define CH_MOTOR2_1 4 // 16 Channels (0-15) are availible
-#define CH_MOTOR2_2 5 // Make sure each pin is a different channel and not in use by other PWM devices (servos, LED's, etc)
+#define CH_MOTOR2_1 2 // 16 Channels (0-15) are availible
+#define CH_MOTOR2_2 3 // Make sure each pin is a different channel and not in use by other PWM devices (servos, LED's, etc)
 
 // Optional Parameters
 #define RES 8     // Resolution in bits:  8 (0-255),  12 (0-4095), or 16 (0-65535)
@@ -62,14 +75,41 @@ bool sbusLost = false;
 #define TX_AUX3 6
 #define TX_AUX4 7
 
+enum HEAD_STATE
+{
+  STATE_1,
+  STATE_2
+};
+HEAD_STATE headState = STATE_1;
+
+enum BODY_STATE
+{
+  NOOD1,
+  NOOD2,
+  BOTH_NOODS
+};
+BODY_STATE bodyState = BOTH_NOODS;
+
 #define SBUS_PACKET_PRINT_INTERVAL 100 // ms
 u_long sbusPacketPrintPrevTime = 0;
 
 float sinCounter = 0.0;
 float sinCounterIncrement = 0.05;
 
+bool doSineMovement = false;
+
 byte hVal = 0;
 byte vVal = 0;
+
+int16_t motor1Val;
+int16_t motor2Val;
+
+// define methods
+void driveMotors();
+void parseSBUS(bool serialPrint);
+void updateHeadBodyState();
+void updateHeadLighting();
+void updateBodyLighting();
 
 void setup()
 {
@@ -79,8 +119,17 @@ void setup()
   sbus_rx.Begin();
   // sbus_tx.Begin();
 
+  // pinMode(MOUTH_LED_OUT, OUTPUT);
+  // digitalWrite(MOUTH_LED_OUT, LOW);
+
   // by default, let's have the program assume sbus is lost
   sbusPrevPacketTime = -SBUS_LOST_TIMEOUT;
+
+  analogWriteResolution(8);
+  analogWriteFrequency(2500);
+
+  tlc.begin();
+  tlc.write();
 
   pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
 
@@ -92,61 +141,42 @@ void loop()
   // pixels.clear(); // Set all pixel colors to 'off'
 
   // read SBUS
-  if (sbus_rx.Read())
+  parseSBUS(true);
+
+  updateHeadBodyState();
+
+  updateHeadLighting();
+  updateBodyLighting();
+
+  /*
+  // write noods value according to sbus channel TX_YAW
+  float nood1Val = constrain(map(data.ch[TX_YAW], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 65535), 0, 65535);
+  float nood2Val = constrain(map(data.ch[TX_THROTTLE], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 65535), 0, 65535);
+  tlc.setLED(0, nood1Val, nood2Val, 0);
+  tlc.setLED(1, nood1Val, nood2Val, 0);
+  // tlc.setLED(1, nood2Val, 0, 0);
+  tlc.write();
+  */
+
+  // byte mouthLedOut = constrain(map(data.ch[TX_YAW], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 250), 0, 255);
+  // analogWrite(MOUTH_LED_OUT, mouthLedOut);
+
+  byte motorPowerRange = 50;
+  if (data.ch[TX_AUX2] > SBUS_SWITCH_MAX_THRESHOLD)
   {
-    sbusPrevPacketTime = millis();
-    if (sbusLost)
-    {
-      Serial.println("Regained SBUS connection");
-      sbusLost = false;
-    }
-
-    /* Grab the received data */
-    data = sbus_rx.data();
-
-    /* Display the received data */
-    if (millis() - sbusPacketPrintPrevTime > SBUS_PACKET_PRINT_INTERVAL)
-    {
-      if (Serial)
-      {
-        for (int8_t i = 0; i < data.NUM_CH; i++)
-        {
-          Serial.print(data.ch[i]);
-          Serial.print("\t");
-        }
-        Serial.println();
-      }
-
-      sbusPacketPrintPrevTime = millis();
-    }
+    motorPowerRange = 255;
+  }
+  else if (data.ch[TX_AUX2] > SBUS_SWITCH_MIN_THRESHOLD)
+  {
+    motorPowerRange = 170;
+  }
+  else
+  {
+    motorPowerRange = 100;
   }
 
-  // if SBUS lost, reset the channels
-  if (millis() - sbusPrevPacketTime > SBUS_LOST_TIMEOUT)
-  {
-    if (!sbusLost)
-    {
-      Serial.print("Lost SBUS connection >> setting first 4 channels to ");
-      Serial.println((SBUS_VAL_MIN + SBUS_VAL_MAX) / 2);
-      sbusLost = true;
-    }
-  }
-
-  if (sbusLost)
-  {
-    for (int8_t i = 0; i < data.NUM_CH; i++)
-    {
-      data.ch[i] = SBUS_VAL_MIN;
-      if (i < 4)
-      {
-        data.ch[i] = (SBUS_VAL_MIN + SBUS_VAL_MAX) / 2;
-      }
-    }
-  }
-
-  int16_t motor1Val = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, -50, 50), -255, 255);
-  int16_t motor2Val = constrain(map(data.ch[TX_PITCH], SBUS_VAL_MIN, SBUS_VAL_MAX, -50, 50), -255, 255);
-
+  motor1Val = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
+  motor2Val = constrain(map(data.ch[TX_PITCH], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
 
   // hVal = constrain(map(data.ch[TX_YAW], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 250), 0, 250);
   hVal = constrain(map(data.ch[TX_YAW], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 250), 0, 250);
@@ -162,31 +192,193 @@ void loop()
   }
   //*/
 
+  /*
   for (int i = 0; i < NUMPIXELS; i++)
   {
     pixels.setPixelColor(i, pixels.Color(hVal, 0, 25 + vVal));
   }
   pixels.show(); // Send the updated pixel colors to the hardware.
+  //*/
   // for (int i = 0; i < NUM_LEDS; i++)
   // {
   //   leds[i] = CHSV(hVal, 240, 25 + vVal);
   // }
   // FastLED.show();
 
+  doSineMovement = (data.ch[TX_AUX4] < SBUS_SWITCH_MIN_THRESHOLD) ? true : false;
+
   int16_t throttleVal = motor2Val;
-  float mix = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 1000), 0, 1000) / 1000.0;
+  // float mix = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 1000), 750, 250) / 1000.0; // gives a range of .25-.75
+
+  // /*
+  // range 0.0-1.0, then an exponent, then map to 250-750
+  float mix = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 1000), 0, 1000) / 1000.0; // gives a range of 0-1.0
+  mix = pow(mix, 1.4);
+  mix = map((mix * 1000.0), 1000, 0, 250, 750) / 1000.0; // reverse the input range because we want to reverse the steering
+  //*/
+
   motor1Val = (throttleVal * (1.0 - mix)) * 2;
   motor2Val = (throttleVal * mix) * 2;
 
-  sinCounterIncrement = map(data.ch[TX_THROTTLE], SBUS_VAL_MIN, SBUS_VAL_MAX, 200, 1000) / 10000.0;
-  float sinMult1 = (sin(sinCounter) + 1.0);
-  float sinMult2 = (sin(sinCounter + HALF_PI) + 1.0);
+  // only applies if doSineMovement is true
+  sinCounterIncrement = map(data.ch[TX_THROTTLE], SBUS_VAL_MIN, SBUS_VAL_MAX, 200, 1000) / 5000.0;
+  sinCounterIncrement = 550 / 5000.0; // override for testing
+  float sinMulFactor = .9;
+  sinMulFactor = constrain(map(data.ch[TX_AUX3], SBUS_VAL_MIN, SBUS_VAL_MAX, 450, 900), 450, 900) / 1000.0;
+  float sinMult1 = sin(sinCounter) * sinMulFactor + (1.0 - sinMulFactor);
+  float sinMult2 = sin(sinCounter + PI) * sinMulFactor + (1.0 - sinMulFactor);
   sinCounter += sinCounterIncrement;
   // Serial.println("sinCounterIncrement: " + String(sinCounterIncrement));
 
-  motor1Val *= sinMult1;
-  motor2Val *= sinMult2;
+  if (doSineMovement)
+  {
+    float ampMul = constrain(map(data.ch[TX_AUX4], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 1000), 0, 1000) / 1000.0;
+    motor1Val *= (sinMult1 * ampMul) + (1.0 - ampMul);
+    motor2Val *= (sinMult2 * ampMul) + (1.0 - ampMul);
+  }
 
+  motor1Val = constrain(motor1Val, -255, 255);
+  motor2Val = constrain(motor2Val, -255, 255);
+
+  driveMotors();
+
+  // delay a little.
+  delay(1000 / 200);
+}
+
+void parseSBUS(bool serialPrint)
+{
+  if (sbus_rx.Read())
+  {
+    sbusPrevPacketTime = millis();
+    if (sbusLost)
+    {
+      Serial.println("Regained SBUS connection");
+      sbusLost = false;
+    }
+
+    /* Grab the received data */
+    data = sbus_rx.data();
+
+    /* Display the received data */
+    if (millis() - sbusPacketPrintPrevTime > SBUS_PACKET_PRINT_INTERVAL)
+    {
+      //*
+      if (Serial && serialPrint)
+      {
+        for (int8_t i = 0; i < data.NUM_CH; i++)
+        {
+          Serial.print(data.ch[i]);
+          Serial.print("\t");
+        }
+        Serial.println();
+      }
+      //*/
+
+      sbusPacketPrintPrevTime = millis();
+    }
+  }
+
+  // if SBUS lost, reset the channels
+  if (millis() - sbusPrevPacketTime > SBUS_LOST_TIMEOUT)
+  {
+    if (!sbusLost)
+    {
+      Serial.print("Lost SBUS connection >> setting throttle/pitch/roll to ");
+      Serial.print((SBUS_VAL_MIN + SBUS_VAL_MAX) / 2);
+      Serial.println(" and yaw to 0 ");
+      sbusLost = true;
+    }
+  }
+
+  if (sbusLost)
+  {
+    for (int8_t i = 0; i < data.NUM_CH; i++)
+    {
+      data.ch[i] = SBUS_VAL_MIN;
+      if (i < 4)
+      {
+        data.ch[i] = (SBUS_VAL_MIN + SBUS_VAL_MAX) / 2;
+        if (i == TX_YAW)
+          data.ch[i] = SBUS_VAL_MIN;
+      }
+    }
+  }
+}
+
+void updateHeadBodyState()
+{
+  if (data.ch[TX_AUX1] < SBUS_SWITCH_MIN_THRESHOLD)
+  {
+    headState = STATE_1;
+  }
+  else
+  {
+    headState = STATE_2;
+  }
+
+  if (data.ch[TX_AUX2] > SBUS_SWITCH_MIN_THRESHOLD)
+  {
+    bodyState = NOOD1;
+  }
+  else if (data.ch[TX_AUX2] > SBUS_SWITCH_MAX_THRESHOLD)
+  {
+    bodyState = NOOD2;
+  }
+  else
+  {
+    bodyState = BOTH_NOODS;
+  }
+}
+
+// led 1 and 3 = eyes
+// led 2 = mouth
+void updateHeadLighting()
+{
+  float audioVal = constrain(map(data.ch[TX_YAW], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 255), 0, 255);
+  switch (headState)
+  {
+  case STATE_1:
+    pixels.setPixelColor(0, pixels.Color(audioVal, 255, audioVal));
+    pixels.setPixelColor(1, pixels.Color(255, audioVal, audioVal));
+    pixels.setPixelColor(2, pixels.Color(audioVal, 255, audioVal));
+    break;
+  case STATE_2:
+    pixels.setPixelColor(0, pixels.Color(audioVal, audioVal, audioVal));
+    pixels.setPixelColor(1, pixels.Color(255, audioVal, audioVal));
+    pixels.setPixelColor(2, pixels.Color(audioVal, audioVal, audioVal));
+    break;
+  }
+  pixels.show(); // Send the updated pixel colors to the hardware.
+}
+
+void updateBodyLighting()
+{
+  // throttle
+  float noodVal = constrain(map(data.ch[TX_THROTTLE], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 65535), 0, 65535);
+
+  switch (bodyState)
+  {
+  case NOOD1:
+    tlc.setLED(0, noodVal, 0, 0);
+    tlc.setLED(1, noodVal, 0, 0);
+    tlc.write();
+    break;
+  case NOOD2:
+    tlc.setLED(0, 0, noodVal, 0);
+    tlc.setLED(1, 0, noodVal, 0);
+    tlc.write();
+    break;
+  case BOTH_NOODS:
+    tlc.setLED(0, noodVal, noodVal, 0);
+    tlc.setLED(1, noodVal, noodVal, 0);
+    tlc.write();
+    break;
+  }
+}
+
+void driveMotors()
+{
   // MOTOR 1
   if (abs(motor1Val) < SBUS_VAL_DEADBAND)
   {
@@ -214,7 +406,4 @@ void loop()
   {
     motorB.motorGo(motor2Val); // Pass the speed to the motor: 0-255 for 8 bit resolution
   }
-
-  // delay a little.
-  delay(1000 / 200);
 }
