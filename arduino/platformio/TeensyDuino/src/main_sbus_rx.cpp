@@ -1,7 +1,14 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_NeoPixel.h>
+#include "sbus.h"
 
+// SoftwareSerial mySerial(37, 39); // RX, TX
+
+// HardwareSerial MySerial0(0);
+
+/* SBUS object, reading SBUS */
+bfs::SbusRx sbus_rx(&Serial1, true, false);
 
 #define PIN 17      // On Trinket or Gemma, suggest changing this to 1
 #define NUMPIXELS 2 // Popular NeoPixel ring size
@@ -12,13 +19,40 @@
 // strandtest example for more information on possible values.
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
+/* SBUS data */
+bfs::SbusData data;
+
+u_long sbusPrevPacketTime;
+bool sbusLost = false;
+
+#define SBUS_VAL_MIN 176
+#define SBUS_VAL_MAX 1800
+#define SBUS_VAL_CENTER 988
+#define SBUS_VAL_DEADBAND 5
+#define SBUS_LOST_TIMEOUT 100
+#define SBUS_SWITCH_MIN 192
+#define SBUS_SWITCH_MAX 1792
+#define SBUS_SWITCH_MIN_THRESHOLD 1400
+#define SBUS_SWITCH_MAX_THRESHOLD 550
+
+#define TX_ROLL 0
+#define TX_PITCH 1
+#define TX_THROTTLE 2
+#define TX_YAW 3
+#define TX_AUX1 4
+#define TX_AUX2 5
+#define TX_AUX3 6
+#define TX_AUX4 7
+
+#define SBUS_PACKET_PRINT_INTERVAL 100 // ms
+u_long sbusPacketPrintPrevTime = 0;
+
+
 // define the methods used in this sketch (prevents compile errors)
 void processMIDI(void);
 void printBytes(const byte *data, unsigned int size);
 
 byte ledPWMVal = 0;
-byte audioVal = 0;
-byte bodyExpressionVal = 0;
 byte aux1_val = 0;
 byte aux2_val = 0;
 
@@ -31,9 +65,8 @@ byte neopixel_gVal = 0;
 byte neopixel_bVal = 0;
 
 #define LED_PIN 10
-#define PWM_OUT_1 23
-#define AUX1_PIN 20
-#define AUX2_PIN 22
+#define NOOD_BLUE_PIN 23
+#define NOOD_WARMWHITE_PIN 22
 
 void BlinkLed(byte num) // Basic blink function
 {
@@ -53,14 +86,20 @@ void setup()
 
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(LED_PIN, OUTPUT);
-  pinMode(PWM_OUT_1, OUTPUT);
-  pinMode(AUX1_PIN, OUTPUT);
-  pinMode(AUX2_PIN, OUTPUT);
+  pinMode(NOOD_1_PIN, OUTPUT);
+  pinMode(NOOD_2_PIN, OUTPUT);
 
   BlinkLed(2);
 
+    /* Begin the SBUS communication */
+  sbus_rx.Begin();
+
+  // by default, let's have the program assume sbus is lost
+  sbusPrevPacketTime = -SBUS_LOST_TIMEOUT;
+
+
   // from https://www.pjrc.com/teensy/teensy31.html
-  analogWriteResolution(8);
+  analogWriteResolution(12);
 
   pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
 }
@@ -74,23 +113,57 @@ void loop()
   delay(1000);
   */
 
+  analogWrite(A14, ledPWMVal << 4);
 
-
-  analogWrite(A14, audioVal);
-  analogWrite(PWM_OUT_1, bodyExpressionVal);
-  analogWrite(AUX1_PIN, aux1_val);
-  analogWrite(AUX2_PIN, aux2_val);
-
-  // local led as debug indicator
   analogWrite(LED_PIN, ledPWMVal);
-
-  // Serial.println("audioVal: " + String(audioVal));
-  // Serial.println("bodyExpressionVal: " + String(bodyExpressionVal));
-  // Serial.println("aux1_val: " + String(aux1_val));
-  // Serial.println("aux2_val: " + String(aux2_val));
+  analogWrite(NOOD_1_PIN, aux1_val);
+  analogWrite(NOOD_2_PIN, aux2_val);
 
 
-  /*
+  //*
+  // read SBUS
+  if (sbus_rx.Read())
+  {
+    sbusPrevPacketTime = millis();
+    if (sbusLost)
+    {
+      Serial.println("Regained SBUS connection");
+      sbusLost = false;
+    }
+
+    data = sbus_rx.data();
+
+    if (millis() - sbusPacketPrintPrevTime > SBUS_PACKET_PRINT_INTERVAL)
+    {
+      if (Serial)
+      {
+        for (int8_t i = 0; i < data.NUM_CH; i++)
+        {
+          Serial.print(data.ch[i]);
+          Serial.print("\t");
+        }
+        Serial.println();
+      }
+
+      sbusPacketPrintPrevTime = millis();
+    }
+  }
+
+  // if SBUS lost, reset the channels
+  if (millis() - sbusPrevPacketTime > SBUS_LOST_TIMEOUT)
+  {
+    if (!sbusLost)
+    {
+      Serial.print("Lost SBUS connection >> setting first 4 channels to ");
+      Serial.println((SBUS_VAL_MIN + SBUS_VAL_MAX) / 2);
+      sbusLost = true;
+    }
+  }
+  //*/
+
+
+
+
   pixels.clear(); // Set all pixel colors to 'off'
   uint32_t ledstripVal = 0;
   // ledstripVal = pixels.ColorHSV(neopixelHVal, neopixelSVal, neopixelVVal);
@@ -98,7 +171,6 @@ void loop()
   // hsvVal = pixels.ColorHSV(0, 255, 255);
   pixels.fill(ledstripVal);
   pixels.show(); // Send the updated pixel colors to the hardware.
-  //*/
 
   // usbMIDI.read() needs to be called rapidly from loop().  When
   // each MIDI messages arrives, it return true.  The message must
@@ -107,8 +179,6 @@ void loop()
   {
     processMIDI();
   }
-
-  // delay(1000/100);
 }
 
 void processMIDI(void)
@@ -170,34 +240,15 @@ void processMIDI(void)
     if (channel == 1 && data1 == 0)
     {
       ledPWMVal = data2 * 2;
-      audioVal = data2 * 2;
-      if (audioVal > 128) {
-        audioVal++; // cheap way to make midi max 127 map to analog max 255
-      }
     }
 
     if (channel == 1 && data1 == 1)
     {
-      bodyExpressionVal = data2 * 2;
-      if (bodyExpressionVal > 128) {
-        bodyExpressionVal++; // cheap way to make midi max 127 map to analog max 255
-      }
+      aux1_val = data2 * 2;
     }
-    
     if (channel == 1 && data1 == 2)
     {
-      aux1_val = data2 * 2;
-      if (aux1_val > 128) {
-        aux1_val++; // cheap way to make midi max 127 map to analog max 255
-      }
-    }
-    
-    if (channel == 1 && data1 == 3)
-    {
       aux2_val = data2 * 2;
-      if (aux2_val > 128) {
-        aux2_val++; // cheap way to make midi max 127 map to analog max 255
-      }
     }
 
     if (channel == 1 && data1 == 10)
