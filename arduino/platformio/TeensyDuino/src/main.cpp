@@ -21,6 +21,7 @@ byte audioVal = 0;
 byte bodyExpressionVal = 0;
 byte aux1_val = 0;
 byte aux2_val = 0;
+byte aux3_val = 0;
 
 uint16_t neopixelHVal = 0;
 byte neopixelSVal = 0;
@@ -31,9 +32,10 @@ byte neopixel_gVal = 0;
 byte neopixel_bVal = 0;
 
 #define LED_PIN 10
-#define PWM_OUT_1 23
-#define AUX1_PIN 20
-#define AUX2_PIN 22
+#define PWM_OUT_1 20
+#define AUX1_PIN 22
+#define AUX2_PIN 23
+#define AUX3_PIN 6
 
 void BlinkLed(byte num) // Basic blink function
 {
@@ -56,6 +58,7 @@ void setup()
   pinMode(PWM_OUT_1, OUTPUT);
   pinMode(AUX1_PIN, OUTPUT);
   pinMode(AUX2_PIN, OUTPUT);
+  pinMode(AUX3_PIN, OUTPUT);
 
   BlinkLed(2);
 
@@ -80,14 +83,16 @@ void loop()
   analogWrite(PWM_OUT_1, bodyExpressionVal);
   analogWrite(AUX1_PIN, aux1_val);
   analogWrite(AUX2_PIN, aux2_val);
+  analogWrite(AUX3_PIN, aux3_val);
 
   // local led as debug indicator
   analogWrite(LED_PIN, ledPWMVal);
 
   // Serial.println("audioVal: " + String(audioVal));
   // Serial.println("bodyExpressionVal: " + String(bodyExpressionVal));
-  // Serial.println("aux1_val: " + String(aux1_val));
-  // Serial.println("aux2_val: " + String(aux2_val));
+  // Serial.println(">aux1_val:" + String(aux1_val));
+  // Serial.println(">aux2_val:" + String(aux2_val));
+  // Serial.println(">aux3_val:" + String(aux3_val));
 
 
   /*
@@ -197,6 +202,14 @@ void processMIDI(void)
       aux2_val = data2 * 2;
       if (aux2_val > 128) {
         aux2_val++; // cheap way to make midi max 127 map to analog max 255
+      }
+    }
+
+    if (channel == 1 && data1 == 4)
+    {
+      aux3_val = data2 * 2;
+      if (aux3_val > 128) {
+        aux3_val++; // cheap way to make midi max 127 map to analog max 255
       }
     }
 
