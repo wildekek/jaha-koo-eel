@@ -14,6 +14,8 @@ public:
     void motorStop();  // Sets both signals to low to allow motor to spin down
     void motorBrake(); // Sets boths signals to high to hard brake the motor
 
+    bool reversed = false;  // Reverse motor direction
+
 private:
     uint8_t _pinIN1;        // Pin 1 to MX1508
     uint8_t _pinIN2;        // Pin 2 to MX1508

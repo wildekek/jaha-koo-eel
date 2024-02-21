@@ -61,6 +61,11 @@ void EelMotor::motorGo(long pwmSpeed)
 {
     _pwmVal = pwmSpeed;
 
+    if (reversed)
+    {
+        _pwmVal = _maxpwm - _pwmVal;
+    }
+
     ledcDetachPin(_pinIN2);
     digitalWrite(_pinIN2, LOW);
 
@@ -73,6 +78,11 @@ void EelMotor::motorGo(long pwmSpeed)
 void EelMotor::motorRev(long pwmSpeed)
 {
     _pwmVal = pwmSpeed;
+
+    if (reversed)
+    {
+        _pwmVal = _maxpwm - _pwmVal;
+    }
 
     ledcDetachPin(_pinIN1);
     digitalWrite(_pinIN1, LOW);
