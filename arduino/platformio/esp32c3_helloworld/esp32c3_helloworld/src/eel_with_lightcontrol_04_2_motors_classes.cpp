@@ -103,6 +103,8 @@ byte nood1b_chan = 1;
 byte nood2a_chan = 2;
 byte nood2b_chan = 3;
 
+void initNoods();
+void initPixels();
 void updateBodyValues();
 void updateBodyLighting();
 void updateSerialIO();
@@ -133,35 +135,12 @@ void setup()
   ledcDetachPin(motor2b_pin);
   //*/
 
-  pinMode(n00d_1a_Pin, OUTPUT);
-  pinMode(n00d_1b_Pin, OUTPUT);
-  pinMode(n00d_2a_Pin, OUTPUT);
-  pinMode(n00d_2b_Pin, OUTPUT);
-
-  ledcSetup(nood1a_chan, freq, resolution);
-  ledcAttachPin(n00d_1a_Pin, nood1a_chan);
-
-  ledcSetup(nood1b_chan, freq, resolution);
-  ledcAttachPin(n00d_1b_Pin, nood1b_chan);
-
-  ledcSetup(nood2a_chan, freq, resolution);
-  ledcAttachPin(n00d_2a_Pin, nood2a_chan);
-
-  ledcSetup(nood2b_chan, freq, resolution);
-  ledcAttachPin(n00d_2b_Pin, nood2b_chan);
+  initNoods();
 
   // by default, let's have the program assume sbus is lost
   sbusPrevPacketTime = -SBUS_LOST_TIMEOUT;
 
-  setn00d(nood1a_chan, 0);
-  setn00d(nood1b_chan, 0);
-  setn00d(nood2a_chan, 0);
-  setn00d(nood2b_chan, 0);
-
-  pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
-  delay(10);
-  pixels.clear();
-  pixels.show();
+  initPixels();
 
   Serial.println("Hello World!");
 }
@@ -202,6 +181,42 @@ void loop()
 
   // delay a little.
   delay(1000 / 200);
+}
+
+void initNoods()
+{
+  pinMode(n00d_1a_Pin, OUTPUT);
+  pinMode(n00d_1b_Pin, OUTPUT);
+  pinMode(n00d_2a_Pin, OUTPUT);
+  pinMode(n00d_2b_Pin, OUTPUT);
+
+  // nood 1a
+  ledcSetup(nood1a_chan, freq, resolution);
+  ledcAttachPin(n00d_1a_Pin, nood1a_chan);
+
+  // nood 1b
+  ledcSetup(nood1b_chan, freq, resolution);
+  ledcAttachPin(n00d_1b_Pin, nood1b_chan);
+
+  // nood 2a
+  ledcSetup(nood2a_chan, freq, resolution);
+  ledcAttachPin(n00d_2a_Pin, nood2a_chan);
+
+  // nood 2b
+  ledcSetup(nood2b_chan, freq, resolution);
+  ledcAttachPin(n00d_2b_Pin, nood2b_chan);
+
+  setn00d(nood1a_chan, 0);
+  setn00d(nood1b_chan, 0);
+  setn00d(nood2a_chan, 0);
+  setn00d(nood2b_chan, 0);
+}
+
+void initPixels() {
+  pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
+  delay(10);
+  pixels.clear();
+  pixels.show();
 }
 
 void updateBodyValues()
