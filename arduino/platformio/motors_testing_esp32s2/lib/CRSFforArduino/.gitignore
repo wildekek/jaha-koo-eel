@@ -4,9 +4,9 @@
 # Artefacts for Visual Studio Code
 .vscode/
 
-# PlatformIO specific README files
-src/platformio/include/README
-src/platformio/test/README
+# PlatformIO specific files
+test/README
+examples/platformio/cfa_code_test.cpp
 
 # Template files for CRSF for Arduino
 templates/
