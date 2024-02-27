@@ -12,16 +12,16 @@
 			"path": "TeensyDuino"
 		},
 		{
-			"name": "TmpTeensy",
-			"path": "TmpTeensy"
-		},
-		{
 			"name": "micro dc-motor rotation sensing testeroo",
 			"path": "micro dc-motor rotation sensing testeroo"
 		},
 		{
 			"name": "motors_testing_esp32s2",
 			"path": "motors_testing_esp32s2"
+		},
+		{
+			"name": "WEMOS_ESP32S2_MIDI_ELRSTX",
+			"path": "WEMOS_ESP32S2_MIDI_ELRSTX"
 		}
 	],
 	"settings": {
@@ -40,7 +40,8 @@
 			"vector": "cpp",
 			"string_view": "cpp",
 			"initializer_list": "cpp",
-			"esp32-hal-matrix.h": "c"
+			"esp32-hal-matrix.h": "c",
+			"arduino.h": "c"
 		}
 	}
 }
