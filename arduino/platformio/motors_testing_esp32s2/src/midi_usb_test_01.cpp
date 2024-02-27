@@ -9,7 +9,7 @@
  any redistribution
 *********************************************************************/
 
-/* This sketch is enumerated as USB MIDI device. 
+/* This sketch is enumerated as USB MIDI device.
  * Following library is required
  * - MIDI Library by Forty Seven Effects
  *   https://github.com/FortySevenEffects/arduino_midi_library
@@ -31,10 +31,9 @@ uint32_t position = 0;
 
 // Store example melody as an array of note values
 byte note_sequence[] = {
-  74,78,81,86,90,93,98,102,57,61,66,69,73,78,81,85,88,92,97,100,97,92,88,85,81,78,
-  74,69,66,62,57,62,66,69,74,78,81,86,90,93,97,102,97,93,90,85,81,78,73,68,64,61,
-  56,61,64,68,74,78,81,86,90,93,98,102
-};
+    74, 78, 81, 86, 90, 93, 98, 102, 57, 61, 66, 69, 73, 78, 81, 85, 88, 92, 97, 100, 97, 92, 88, 85, 81, 78,
+    74, 69, 66, 62, 57, 62, 66, 69, 74, 78, 81, 86, 90, 93, 97, 102, 97, 93, 90, 85, 81, 78, 73, 68, 64, 61,
+    56, 61, 64, 68, 74, 78, 81, 86, 90, 93, 98, 102};
 
 void handleNoteOn(byte channel, byte pitch, byte velocity);
 void handleNoteOff(byte channel, byte pitch, byte velocity);
@@ -48,7 +47,7 @@ void setup()
 #endif
 
   pinMode(LED_BUILTIN, OUTPUT);
-  
+
   usb_midi.setStringDescriptor("TinyUSB MIDI");
 
   // Initialize MIDI, and listen to all MIDI channels
@@ -67,46 +66,50 @@ void setup()
   Serial.begin(115200);
 
   // wait until device mounted
-  while( !TinyUSBDevice.mounted() ) delay(1);
+  while (!TinyUSBDevice.mounted())
+    delay(1);
 }
 
 void loop()
 {
   static uint32_t start_ms = 0;
-  if ( millis() - start_ms > 266 )
+  if (millis() - start_ms > 266)
   {
     start_ms += 266;
-    
+
     // Setup variables for the current and previous
     // positions in the note sequence.
     int previous = position - 1;
-  
+
     // If we currently are at position 0, set the
     // previous position to the last note in the sequence.
-    if (previous < 0) {
+    if (previous < 0)
+    {
       previous = sizeof(note_sequence) - 1;
     }
-  
+
     // Send Note On for current position at full velocity (127) on channel 1.
     MIDI.sendNoteOn(note_sequence[position], 127, 1);
-  
+
     // Send Note Off for previous note.
     MIDI.sendNoteOff(note_sequence[previous], 0, 1);
-  
+
     // Increment position
     position++;
-  
+
     // If we are at the end of the sequence, start over.
-    if (position >= sizeof(note_sequence)) {
+    if (position >= sizeof(note_sequence))
+    {
       position = 0;
     }
   }
 
   // read any new MIDI messages
-  MIDI.read();  
+  MIDI.read();
 }
 
-void handleControlChange(byte channel, byte data1, byte data2) {
+void handleControlChange(byte channel, byte data1, byte data2)
+{
   Serial.println("Receive CC >>  channel: " + String(channel) + ", data: " + String(data1) + ", data2: " + String(data2));
 }
 
