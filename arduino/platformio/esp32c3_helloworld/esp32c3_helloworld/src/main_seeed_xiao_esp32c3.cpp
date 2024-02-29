@@ -121,6 +121,7 @@ void parseSBUS(bool serialPrint);
 void updateHeadBodyState();
 void updateHeadLighting();
 void updateBodyLighting();
+void calcMotorValues();
 
 void setup()
 {
@@ -168,66 +169,7 @@ void loop()
   updateHeadLighting();
   // updateBodyLighting();
 
-  byte motorPowerRange = 255;
-  if (data.ch[TX_AUX4] > SBUS_SWITCH_MIN_THRESHOLD)
-  {
-    motorPowerRange = 255;
-  }
-  else if (data.ch[TX_AUX4] > SBUS_SWITCH_MAX_THRESHOLD)
-  {
-    motorPowerRange = 130;
-  }
-  else
-  {
-    motorPowerRange = 80;
-  }
-
-  motor1Val = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
-  motor2Val = constrain(map(data.ch[TX_PITCH], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
-
-  doSineMovement = (data.ch[TX_AUX4] < SBUS_SWITCH_MIN_THRESHOLD) ? true : false;
-  doSineMovement = false; // override
-
-  int16_t throttleVal = motor2Val;
-  EVERY_N_MILLIS(250)
-  {
-    // Serial.print("motorPowerRange: " + String(motorPowerRange));
-    // Serial.println(", throttleVal: " + String(motor2Val));
-  }
-
-  // float mix = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 1000), 750, 250) / 1000.0; // gives a range of .25-.75
-
-  // /*
-  // range 0.0-1.0, then an exponent, then map to 250-750
-  float mix = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 1000), 0, 1000) / 1000.0; // gives a range of 0-1.0
-  // mix = pow(mix, 1.4);
-  // mix = map((mix * 1000.0), 1000, 0, 250, 750) / 1000.0; // reverse the input range because we want to reverse the steering
-  mix = map((mix * 1000.0), 1000, 0, 0, 1000) / 1000.0; // reverse the input range because we want to reverse the steering
-  //*/
-
-  motor1Val = (throttleVal * (1.0 - mix)) * 2;
-  motor2Val = (throttleVal * mix) * 2;
-
-  // only applies if doSineMovement is true
-  // sinCounterIncrement = map(data.ch[TX_THROTTLE], SBUS_VAL_MIN, SBUS_VAL_MAX, 200, 1000) / 5000.0;
-  sinCounterIncrement = 550 / 5000.0; // override for testing
-  float sinMulFactor = .9;
-  sinMulFactor = constrain(map(data.ch[TX_AUX3], SBUS_VAL_MIN, SBUS_VAL_MAX, 450, 900), 450, 900) / 1000.0;
-  float sinMult1 = sin(sinCounter) * sinMulFactor + (1.0 - sinMulFactor);
-  float sinMult2 = sin(sinCounter + PI) * sinMulFactor + (1.0 - sinMulFactor);
-  sinCounter += sinCounterIncrement;
-  // Serial.println("sinCounterIncrement: " + String(sinCounterIncrement));
-
-  if (doSineMovement)
-  {
-    float ampMul = constrain(map(data.ch[TX_AUX4], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 1000), 0, 1000) / 1000.0;
-    motor1Val *= (sinMult1 * ampMul) + (1.0 - ampMul);
-    motor2Val *= (sinMult2 * ampMul) + (1.0 - ampMul);
-  }
-
-  motor1Val = constrain(motor1Val, -255, 255);
-  motor2Val = constrain(motor2Val, -255, 255);
-
+  calcMotorValues();
   driveMotors();
 
   // delay a little.
@@ -549,6 +491,69 @@ void updateHeadLighting()
   }
   pixels.show(); // Send the updated pixel colors to the hardware.
 }
+
+void calcMotorValues() {
+  byte motorPowerRange = 255;
+  if (data.ch[TX_AUX4] > SBUS_SWITCH_MIN_THRESHOLD)
+  {
+    motorPowerRange = 255;
+  }
+  else if (data.ch[TX_AUX4] > SBUS_SWITCH_MAX_THRESHOLD)
+  {
+    motorPowerRange = 130;
+  }
+  else
+  {
+    motorPowerRange = 80;
+  }
+
+  motor1Val = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
+  motor2Val = constrain(map(data.ch[TX_PITCH], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
+
+  doSineMovement = (data.ch[TX_AUX4] < SBUS_SWITCH_MIN_THRESHOLD) ? true : false;
+  doSineMovement = false; // override
+
+  int16_t throttleVal = motor2Val;
+  EVERY_N_MILLIS(250)
+  {
+    // Serial.print("motorPowerRange: " + String(motorPowerRange));
+    // Serial.println(", throttleVal: " + String(motor2Val));
+  }
+
+  // float mix = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 1000), 750, 250) / 1000.0; // gives a range of .25-.75
+
+  // /*
+  // range 0.0-1.0, then an exponent, then map to 250-750
+  float mix = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 1000), 0, 1000) / 1000.0; // gives a range of 0-1.0
+  // mix = pow(mix, 1.4);
+  // mix = map((mix * 1000.0), 1000, 0, 250, 750) / 1000.0; // reverse the input range because we want to reverse the steering
+  mix = map((mix * 1000.0), 1000, 0, 0, 1000) / 1000.0; // reverse the input range because we want to reverse the steering
+  //*/
+
+  motor1Val = (throttleVal * (1.0 - mix)) * 2;
+  motor2Val = (throttleVal * mix) * 2;
+
+  // only applies if doSineMovement is true
+  // sinCounterIncrement = map(data.ch[TX_THROTTLE], SBUS_VAL_MIN, SBUS_VAL_MAX, 200, 1000) / 5000.0;
+  sinCounterIncrement = 550 / 5000.0; // override for testing
+  float sinMulFactor = .9;
+  sinMulFactor = constrain(map(data.ch[TX_AUX3], SBUS_VAL_MIN, SBUS_VAL_MAX, 450, 900), 450, 900) / 1000.0;
+  float sinMult1 = sin(sinCounter) * sinMulFactor + (1.0 - sinMulFactor);
+  float sinMult2 = sin(sinCounter + PI) * sinMulFactor + (1.0 - sinMulFactor);
+  sinCounter += sinCounterIncrement;
+  // Serial.println("sinCounterIncrement: " + String(sinCounterIncrement));
+
+  if (doSineMovement)
+  {
+    float ampMul = constrain(map(data.ch[TX_AUX4], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 1000), 0, 1000) / 1000.0;
+    motor1Val *= (sinMult1 * ampMul) + (1.0 - ampMul);
+    motor2Val *= (sinMult2 * ampMul) + (1.0 - ampMul);
+  }
+
+  motor1Val = constrain(motor1Val, -255, 255);
+  motor2Val = constrain(motor2Val, -255, 255);
+}
+
 
 void driveMotors()
 {
