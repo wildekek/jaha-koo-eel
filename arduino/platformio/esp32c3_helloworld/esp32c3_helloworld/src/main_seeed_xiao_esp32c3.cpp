@@ -76,6 +76,17 @@ enum BODY_STATE
 };
 BODY_STATE bodyState = BOTH_NOODS;
 
+// The CONNECTION_ESTABLISHED and CONNECTION_LOST states are kind of vanity states, in case I want to
+// implement some kind of unique visual feedback for when the connection is lost or established.
+enum CONNECTION_STATE
+{
+  DISCONNECTED,
+  CONNECTION_ESTABLISHED,
+  CONNECTION_LOST,
+  CONNECTED
+};
+CONNECTION_STATE connectionState = DISCONNECTED;
+
 #define SBUS_PACKET_PRINT_INTERVAL 100 // ms
 u_long sbusPacketPrintPrevTime = 0;
 
@@ -114,6 +125,9 @@ void updateBodyLighting();
 void updateSerialIO();
 void checkIncomingSerial();
 void setn00d(uint8_t chan, uint8_t val);
+
+void resetSbusData();
+void setLights_disconnected();
 
 // define methods
 void driveMotors();
@@ -160,6 +174,31 @@ void loop()
 
   // read SBUS
   parseSBUS(true);
+
+  // determine how to set the head and body lights
+  switch (connectionState) {
+    case DISCONNECTED:
+      resetSbusData();
+      setLights_disconnected();
+      break;
+    case CONNECTION_ESTABLISHED:
+      if (sbusLost) {
+        connectionState = CONNECTION_LOST;
+      } else {
+        connectionState = CONNECTED;
+      }
+      break;
+    case CONNECTION_LOST:
+      if (!sbusLost) {
+        connectionState = CONNECTION_ESTABLISHED;
+      }
+      break;
+    case CONNECTED:
+      if (sbusLost) {
+        connectionState = CONNECTION_LOST;
+      }
+      break;
+  }
 
   updateHeadBodyState();
 
@@ -391,10 +430,10 @@ void parseSBUS(bool serialPrint)
   if (sbus_rx.Read())
   {
     sbusPrevPacketTime = millis();
-    if (sbusLost)
+    if (connectionState == CONNECTION_LOST)
     {
       Serial.println("Regained SBUS connection");
-      sbusLost = false;
+      connectionState = CONNECTION_ESTABLISHED;
     }
 
     /* Grab the received data */
@@ -422,17 +461,23 @@ void parseSBUS(bool serialPrint)
   // if SBUS lost, reset the channels
   if (millis() - sbusPrevPacketTime > SBUS_LOST_TIMEOUT)
   {
-    if (!sbusLost)
+    if (!connectionState == CONNECTION_LOST)
     {
       Serial.print("Lost SBUS connection >> setting throttle/pitch/roll to ");
       Serial.print((SBUS_VAL_MIN + SBUS_VAL_MAX) / 2);
       Serial.println(" and yaw to 0 ");
-      sbusLost = true;
+      
+      connectionState = CONNECTION_LOST;
     }
   }
 
-  if (sbusLost)
+  if (connectionState == CONNECTION_LOST)
   {
+    resetSbusData();
+  }
+}
+
+void resetSbusData() {
     for (int8_t i = 0; i < data.NUM_CH; i++)
     {
       data.ch[i] = SBUS_VAL_MIN;
@@ -443,7 +488,6 @@ void parseSBUS(bool serialPrint)
           data.ch[i] = SBUS_VAL_MIN;
       }
     }
-  }
 }
 
 void updateHeadBodyState()
