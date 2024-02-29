@@ -559,7 +559,7 @@ void driveMotors()
   }
   if (motor1Val < -SBUS_VAL_DEADBAND)
   {
-    motor1.motorRev(-motor1Val); // Pass the speed to the motor: 0-255 for 8 bit resolution
+    motor1.motorRev(motor1Val); // Pass the speed to the motor: 0-255 for 8 bit resolution
   }
   if (motor1Val > SBUS_VAL_DEADBAND)
   {
@@ -573,7 +573,7 @@ void driveMotors()
   }
   if (motor2Val < -SBUS_VAL_DEADBAND)
   {
-    motor2.motorRev(-motor2Val); // Pass the speed to the motor: 0-255 for 8 bit resolution
+    motor2.motorRev(motor2Val); // Pass the speed to the motor: 0-255 for 8 bit resolution
   }
   if (motor2Val > SBUS_VAL_DEADBAND)
   {
