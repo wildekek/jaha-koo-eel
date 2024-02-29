@@ -168,8 +168,8 @@ void loop()
     }
     else if (data.ch[TX_PITCH] < (SBUS_VAL_CENTER - SBUS_VAL_DEADBAND))
     {
-      motor1.motorGo(map(data.ch[TX_PITCH], SBUS_VAL_CENTER, SBUS_VAL_MIN, 0, 255));
-      motor2.motorGo(map(data.ch[TX_PITCH], SBUS_VAL_CENTER, SBUS_VAL_MIN, 0, 255));
+      motor1.motorRev(map(data.ch[TX_PITCH], SBUS_VAL_CENTER, SBUS_VAL_MIN, 0, 255));
+      motor2.motorRev(map(data.ch[TX_PITCH], SBUS_VAL_CENTER, SBUS_VAL_MIN, 0, 255));
     }
     else
     {
