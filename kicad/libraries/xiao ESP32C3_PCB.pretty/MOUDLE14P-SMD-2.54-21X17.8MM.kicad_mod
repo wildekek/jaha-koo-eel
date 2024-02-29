@@ -20,10 +20,10 @@
   (fp_line (start 17.8 0) (end 17.8 -21) (layer "F.SilkS") (width 0.127) (tstamp c1d5e05f-bbca-4fcf-b197-4e0ce4be9168))
   (fp_line (start 4.396 -15.072) (end 4.396 -22.425) (layer "F.SilkS") (width 0.127) (tstamp e4993a3b-fae4-4118-88aa-12d7115bdf7d))
   (fp_poly (pts
-      (xy 0 -20.955)
-      (xy -0.045 -38.755)
-      (xy 20.955 -38.755)
-      (xy 20.955 -20.955)
+      (xy -0.706027 0.595105)
+      (xy -0.751027 -21.354895)
+      (xy 18.75 -21.355)
+      (xy 18.75 0.595)
     ) (layer "F.CrtYd") (width 0.01) (fill none) (tstamp 80213f7a-b565-4f4b-b0cb-82c589c8f2b0))
   (pad "1" smd roundrect (at 0.835 -18.12) (size 2.75 2) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.5) (tstamp 17fabf13-e536-4b39-a035-2ae400cfca6a))
   (pad "2" smd roundrect (at 0.835 -15.58) (size 2.75 2) (layers "F.Cu" "F.Paste" "F.Mask") (roundrect_rratio 0.5) (tstamp d787ae17-b58f-46d8-b4f8-6910f761f1bc))
@@ -160,5 +160,10 @@
       0846a314-4421-4a4a-897b-397cffcfe9fb
       415fee33-b709-4339-a7c9-bbcdab0e3a4d
     )
+  )
+  (model "${KICAD6_3DMODEL_DIR}/Haribo_Kimchi.3dshapes/Seeed Studio XIAO-ESP32-C3.step"
+    (offset (xyz 15 8.75 0))
+    (scale (xyz 1 1 1))
+    (rotate (xyz -90 0 -90))
   )
 )
