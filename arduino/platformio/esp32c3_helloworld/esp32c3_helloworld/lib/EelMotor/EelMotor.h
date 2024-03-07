@@ -15,14 +15,17 @@ public:
     void motorBrake(); // Sets boths signals to high to hard brake the motor
 
     bool reversed = false;  // Reverse motor direction
+    long _pwmVal;           // PWM Value (speed)
 
 private:
+    void _motorGo();
+    void _motorRev();
+
     uint8_t _pinIN1;        // Pin 1 to MX1508
     uint8_t _pinIN2;        // Pin 2 to MX1508
     uint8_t _ledChan;       // ESP32 ledc Channel for PWM
     uint8_t resolution = 8; // PWM Resolution
     long freq = 2500;       // PWM Freq
-    long _pwmVal;           // PWM Value (speed)
     long _maxpwm;           // Max PWM Value of the Motor
 };
 

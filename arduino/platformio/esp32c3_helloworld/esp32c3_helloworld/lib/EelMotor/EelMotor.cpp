@@ -43,6 +43,8 @@ EelMotor::EelMotor(uint8_t pinIN1, uint8_t pinIN2, uint8_t ledChan, uint8_t reso
 
 void EelMotor::motorStop()
 {
+    this->_pwmVal = 0;
+
     ledcDetachPin(_pinIN1);
     ledcDetachPin(_pinIN2);
     digitalWrite(_pinIN1, LOW);
@@ -51,6 +53,8 @@ void EelMotor::motorStop()
 
 void EelMotor::motorBrake()
 {
+    this->_pwmVal = 0;
+
     ledcDetachPin(_pinIN1);
     ledcDetachPin(_pinIN2);
     digitalWrite(_pinIN1, HIGH);
@@ -59,8 +63,9 @@ void EelMotor::motorBrake()
 
 void EelMotor::motorGo(long pwmSpeed)
 {
-    _pwmVal = pwmSpeed;
+    this->_pwmVal = pwmSpeed;
 
+    /*
     if (reversed)
     {
         _pwmVal = _maxpwm - _pwmVal;
@@ -73,17 +78,63 @@ void EelMotor::motorGo(long pwmSpeed)
     ledcWrite(_pinIN1, _pwmVal);
 
     ledcWrite(_ledChan, _pwmVal);
+
+    /*/
+
+    if (reversed)
+    {
+        _motorRev();
+    }
+    else
+    {
+        _motorGo();
+    }
+    //*/
 }
 
 void EelMotor::motorRev(long pwmSpeed)
 {
-    _pwmVal = pwmSpeed;
+    this->_pwmVal = pwmSpeed;
 
+    /*
     if (reversed)
     {
         _pwmVal = _maxpwm - _pwmVal;
     }
 
+    ledcDetachPin(_pinIN1);
+    digitalWrite(_pinIN1, LOW);
+
+    ledcAttachPin(_pinIN2, _ledChan);
+    ledcWrite(_pinIN2, _pwmVal);
+
+    ledcWrite(_ledChan, _pwmVal);
+
+    /*/
+    if (reversed)
+    {
+        _motorGo();
+    }
+    else
+    {
+        _motorRev();
+    }
+   //*/
+}
+
+void EelMotor::_motorGo()
+{
+    ledcDetachPin(_pinIN2);
+    digitalWrite(_pinIN2, LOW);
+
+    ledcAttachPin(_pinIN1, _ledChan);
+    ledcWrite(_pinIN1, _pwmVal);
+
+    ledcWrite(_ledChan, _pwmVal);
+}
+
+void EelMotor::_motorRev()
+{
     ledcDetachPin(_pinIN1);
     digitalWrite(_pinIN1, LOW);
 
