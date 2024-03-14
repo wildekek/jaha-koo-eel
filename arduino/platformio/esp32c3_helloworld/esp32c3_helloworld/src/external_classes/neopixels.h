@@ -11,55 +11,91 @@
 Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
 
 void initPixels();
-void setRGBLights();
-void updateHeadLighting();
+void setHeadLights();
+void updateHeadLightValues();
+
+uint32_t rgbLeds[3] = {0, 0, 0};
+
+#define LEFT_EYE 0
+#define RIGHT_EYE 2
+#define MOUTH 1
+
+#define hue360ToNeopixelHue(hue) hue * 182
 
 void initPixels()
 {
-  pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
-  delay(10);
-  pixels.clear();
-  pixels.show();
+    pixels.begin(); // INITIALIZE NeoPixel strip object (REQUIRED)
+    delay(10);
+    pixels.clear();
+    pixels.show();
 }
 
 // led 1 and 3 = eyes
 // led 2 = mouth
-void updateHeadLighting()
+uint8_t eyesBaseVal = 32;
+uint8_t mouthBaseVal = 32;
+void updateHeadLightValues()
 {
-  uint8_t audioVal = constrain(map(data.ch[TX_YAW], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 255), 0, 255);
-  switch (headState)
-  {
-  case STATE_1: // tmp: off
-    pixels.setPixelColor(0, pixels.Color(0, 0, 0)); // left eye
-    pixels.setPixelColor(1, pixels.Color(0, 0, 0)); // mouth
-    pixels.setPixelColor(2, pixels.Color(0, 0, 0)); // right eye
-    // pixels.setPixelColor(0, pixels.Color(255, 0, 0)); // left eye
-    // pixels.setPixelColor(1, pixels.Color(255, audioVal, audioVal)); // mouth
-    // pixels.setPixelColor(2, pixels.Color(audioVal, 255, audioVal)); // right eye
-    break;
-  case STATE_2: // tmp: green
-    pixels.setPixelColor(0, pixels.Color(0, audioVal, 0)); // left eye
-    pixels.setPixelColor(1, pixels.Color(0, audioVal, 0));      // mouth
-    pixels.setPixelColor(2, pixels.Color(0, audioVal, 0)); // right eye
-    // pixels.setPixelColor(0, pixels.Color(audioVal, audioVal, audioVal)); // left eye
-    // pixels.setPixelColor(1, pixels.Color(255, audioVal, audioVal));      // mouth
-    // pixels.setPixelColor(2, pixels.Color(audioVal, audioVal, audioVal)); // right eye
-    break;
-  case STATE_3: // tmp: white
-    pixels.setPixelColor(0, pixels.Color(audioVal, audioVal, audioVal)); // left eye
-    pixels.setPixelColor(1, pixels.Color(audioVal, audioVal, audioVal));      // mouth
-    pixels.setPixelColor(2, pixels.Color(audioVal, audioVal, audioVal)); // right eye
-    // pixels.setPixelColor(0, pixels.Color(audioVal, audioVal, audioVal)); // left eye
-    // pixels.setPixelColor(1, pixels.Color(255, audioVal, audioVal));      // mouth
-    // pixels.setPixelColor(2, pixels.Color(audioVal, audioVal, audioVal)); // right eye
-    break;
-  }
-  pixels.show(); // Send the updated pixel colors to the hardware.
+    uint8_t audioVal = constrain(map(data.ch[TX_YAW], SBUS_VAL_MIN, SBUS_VAL_MAX, 0, 255), 0, 255);
+
+    rgbLeds[RIGHT_EYE] = pixels.Color(0, eyesBaseVal + map(audioVal, 0, 255, 0, (255 - eyesBaseVal)), 0);
+    rgbLeds[LEFT_EYE] = pixels.Color(0, eyesBaseVal + map(audioVal, 0, 255, 0, (255 - eyesBaseVal)), 0);
+
+    switch (headState)
+    {
+    case STATE_1:
+        /* tmp: all off
+        rgbLeds[RIGHT_EYE] = pixels.Color(0, 0, 0);
+        rgbLeds[MOUTH] = pixels.Color(0, 0, 0);
+        rgbLeds[LEFT_EYE] = pixels.Color(0, 0, 0);
+        // pixels.setPixelColor(LEFT_EYE, pixels.Color(0, 0, 0));
+        // pixels.setPixelColor(RIGHT_EYE, pixels.Color(0, 0, 0));
+        // pixels.setPixelColor(MOUTH, pixels.Color(0, 0, 0));
+        /*/
+        rgbLeds[MOUTH] = pixels.Color(0, 0, 0);
+
+        // pixels.setPixelColor(RIGHT_EYE, pixels.Color(255, 0, 0));
+        // pixels.setPixelColor(MOUTH, pixels.Color(255, audioVal, audioVal));
+        // pixels.setPixelColor(LEFT_EYE, pixels.Color(audioVal, 255, audioVal));
+        //*/
+        break;
+    case STATE_2:
+        /* tmp: all green
+        pixels.setPixelColor(LEFT_EYE, pixels.Color(0, audioVal, 0));
+        pixels.setPixelColor(RIGHT_EYE, pixels.Color(0, audioVal, 0));
+        pixels.setPixelColor(MOUTH, pixels.Color(0, audioVal, 0));
+        /*/
+        // rgbLeds[MOUTH] = pixels.Color(255, audioVal, audioVal);
+        rgbLeds[MOUTH] = pixels.ColorHSV(hue360ToNeopixelHue(315), 127, mouthBaseVal);
+
+        // pixels.setPixelColor(RIGHT_EYE, pixels.Color(audioVal, audioVal, audioVal));
+        // pixels.setPixelColor(MOUTH, pixels.Color(255, audioVal, audioVal));
+        // pixels.setPixelColor(LEFT_EYE, pixels.Color(audioVal, audioVal, audioVal));
+        //*/
+        break;
+    case STATE_3:
+        /* tmp: all white
+        pixels.setPixelColor(LEFT_EYE, pixels.Color(audioVal, audioVal, audioVal));
+        pixels.setPixelColor(RIGHT_EYE, pixels.Color(audioVal, audioVal, audioVal));
+        pixels.setPixelColor(MOUTH, pixels.Color(audioVal, audioVal, audioVal));
+        /*/
+        // rgbLeds[MOUTH] = pixels.Color(255, audioVal, audioVal);
+        rgbLeds[MOUTH] = pixels.ColorHSV(hue360ToNeopixelHue(315), 127, mouthBaseVal + map(audioVal, 0, 255, 0, (255 - mouthBaseVal)));
+
+        // pixels.setPixelColor(RIGHT_EYE, pixels.Color(audioVal, audioVal, audioVal));
+        // pixels.setPixelColor(MOUTH, pixels.Color(255, audioVal, audioVal));
+        // pixels.setPixelColor(LEFT_EYE, pixels.Color(audioVal, audioVal, audioVal));
+        //*/
+        break;
+    }
+    // pixels.show(); // Send the updated pixel colors to the hardware.
 }
 
-
-void setRGBLights()
+void setHeadLights()
 {
-  // ??
+    for (int i = 0; i < 3; i++)
+    {
+        pixels.setPixelColor(i, rgbLeds[i]);
+    }
+    pixels.show(); // Send the updated pixel colors to the hardware.
 }
-

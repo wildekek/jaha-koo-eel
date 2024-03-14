@@ -17,37 +17,44 @@ int16_t motor2Val;
 int16_t n00d1a, n00d1b, n00d2a, n00d2b;
 uint16_t throttle, throttleAdjusted;
 
-void driveMotors();
-void calcMotorValues();
 void initMotors();
+void calcMotorValues();
+void driveMotors();
 
-void initMotors() {
+void initMotors()
+{
   motor1.reversed = true;
   motor2.reversed = true;
 }
 
+uint8_t motorStrength;
+
 void calcMotorValues()
 {
   byte motorPowerRange = 255;
+  byte motorOutMode = 0;
 
-  /* position of AUX4 selects diff motor power ranges
+  //* position of AUX4 selects diff motor power ranges
   if (data.ch[TX_AUX4] > SBUS_SWITCH_MIN_THRESHOLD)
   {
+    motorOutMode = 0; // linear
     motorPowerRange = 255;
   }
   else if (data.ch[TX_AUX4] > SBUS_SWITCH_MAX_THRESHOLD)
   {
-    motorPowerRange = 130;
+    motorOutMode = 0; // linear
+    motorPowerRange = 200;
   }
   else
   {
-    motorPowerRange = 80;
+    motorOutMode = 1; // wiggle
+    motorPowerRange = 255;
   }
   //*/
 
-  byte motorOutMode = 0;
   int16_t mix = 1000;
-  //* position of AUX4 selects diff motor output modes
+
+  /* position of AUX4 selects diff motor output modes
   if (data.ch[TX_AUX4] > SBUS_SWITCH_MIN_THRESHOLD)
   {
     motorOutMode = 0;
@@ -60,15 +67,29 @@ void calcMotorValues()
   {
     motorOutMode = 2;
   }
+  //*/
+
+  // calc drive strength and determine fwd/rev direction
+  uint16_t pitchOffset = abs(data.ch[TX_PITCH] - SBUS_VAL_CENTER);
+  uint16_t rollOffset = abs(data.ch[TX_ROLL] - SBUS_VAL_CENTER);
+  double stickDistFromCenter = sqrt(pow(pitchOffset, 2) + pow(rollOffset, 2));
+  int16_t motorStrength = constrain(map(stickDistFromCenter, 0, 800, 0, motorPowerRange), 0, motorPowerRange);
+  if (pitchOffset > SBUS_VAL_DEADBAND)
+  {
+    if ((data.ch[TX_PITCH] - SBUS_VAL_CENTER) < 0)
+    {
+      motorStrength = -motorStrength;
+    }
+  }
 
   if (motorOutMode == 0)
   {
 
     //*/
-    motor1Val = constrain(map(data.ch[TX_PITCH], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
-    motor2Val = motor1Val;
+    // motor1Val = constrain(map(data.ch[TX_PITCH], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
+    // motor2Val = motor1Val;
 
-    int16_t throttleVal = motor1Val;
+    int16_t throttleVal = motorStrength;
     EVERY_N_MILLIS(250)
     {
       // Serial.print("motorPowerRange: " + String(motorPowerRange));
@@ -85,50 +106,46 @@ void calcMotorValues()
     // mix = map((mix * 1000.0), 1000, 0, 0, 1000) / 1000.0; // reverse the input range because we want to reverse the steering
     //*/
 
-    motor1Val = (int16_t)((throttleVal * (2000 - mix)) / 2000);
-    motor2Val = (int16_t)((throttleVal * mix) / 2000);
+    // shitty hack
+    uint16_t mixLeft = constrain(map(data.ch[TX_ROLL], SBUS_VAL_CENTER, SBUS_VAL_MIN, 1000, 0), 0, 1000);
+    uint16_t mixRight = constrain(map(data.ch[TX_ROLL], SBUS_VAL_CENTER, SBUS_VAL_MAX, 1000, 0), 0, 1000);
+
+    // motor1Val = (int16_t)((throttleVal * (2000 - mix)) / mulVal);
+    // motor2Val = (int16_t)((throttleVal * mix) / mulVal);
+    motor1Val = (int16_t)((throttleVal * mixRight) / 1000);
+    motor2Val = (int16_t)((throttleVal * mixLeft) / 1000);
+
+    // taper off motor strength as pitch stick gets closer to center
+    if (pitchOffset < 75)
+    {
+      motor1Val *= map(pitchOffset, 0, 75, 350, 1000);
+      motor1Val /= 1000;
+
+      motor2Val *= map(pitchOffset, 0, 75, 350, 1000);
+      motor2Val /= 1000;
+    }
   }
+
+  // wiggle mode: left/right stick deflection yields amplified motor diff strength.
   if (motorOutMode == 1)
   {
-    motor1Val = 0;
-    motor2Val = 0;
-    if (abs(data.ch[TX_PITCH] - SBUS_VAL_CENTER) > 200)
-    {
-      // if forward or backward: move linearly (no mixing)
+    int16_t throttleVal = motorStrength;
 
-      motor1Val = constrain(map(data.ch[TX_PITCH], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
-      motor2Val = constrain(map(data.ch[TX_PITCH], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
-    }
-    else
-    {
-      // if left/right: only left or right, no mixing
-      if (data.ch[TX_ROLL] < (SBUS_VAL_CENTER - 150)) // left
-      {
-        motor2Val = 0;
-        motor1Val = constrain(map(data.ch[TX_ROLL], SBUS_VAL_CENTER, SBUS_VAL_MIN, 0, motorPowerRange), 0, 255);
-      }
-      if (data.ch[TX_ROLL] > (SBUS_VAL_CENTER + 150)) // right
-      {
-        motor2Val = constrain(map(data.ch[TX_ROLL], SBUS_VAL_CENTER, SBUS_VAL_MAX, 0, motorPowerRange), 0, 255);
-        motor1Val = 0;
-      }
-    }
-  }
-  if (motorOutMode == 2)
-  {
-    motor1Val = 0;
-    motor2Val = 0;
-    if (abs(data.ch[TX_PITCH] - SBUS_VAL_CENTER) > 200)
-    {
-      // if forward or backward: move linearly (no mixing)
+    // shitty hack
+    int16_t mixLeft = constrain(map(data.ch[TX_ROLL], SBUS_VAL_CENTER, SBUS_VAL_MIN, 1000, -1000), -1000, 1000);
+    int16_t mixRight = constrain(map(data.ch[TX_ROLL], SBUS_VAL_CENTER, SBUS_VAL_MAX, 1000, -1000), -1000, 1000);
 
-      motor1Val = constrain(map(data.ch[TX_PITCH], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
-      motor2Val = constrain(map(data.ch[TX_PITCH], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
-    }
-    else
+    motor1Val = (int16_t)((throttleVal * mixRight) / 1000);
+    motor2Val = (int16_t)((throttleVal * mixLeft) / 1000);
+
+    // taper off motor strength as pitch stick gets closer to center
+    if (pitchOffset < 75)
     {
-      motor1Val = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, -motorPowerRange, motorPowerRange), -255, 255);
-      motor2Val = constrain(map(data.ch[TX_ROLL], SBUS_VAL_MIN, SBUS_VAL_MAX, motorPowerRange, -motorPowerRange), -255, 255);
+      motor1Val *= map(pitchOffset, 0, 75, 350, 1000);
+      motor1Val /= 1000;
+
+      motor2Val *= map(pitchOffset, 0, 75, 350, 1000);
+      motor2Val /= 1000;
     }
   }
 
@@ -157,10 +174,10 @@ void calcMotorValues()
   motor1Val = constrain(motor1Val, -255, 255);
   motor2Val = constrain(motor2Val, -255, 255);
 
-  EVERY_N_MILLIS(200)
-  {
-    Serial.println("mix: " + String(mix) + ", motor1Val: " + String(motor1Val) + ", motor2Val: " + String(motor2Val) + ", motor1._pwmVal: " + String(motor1._pwmVal) + ", motor2._pwmVal: " + String(motor2._pwmVal));
-  }
+  // EVERY_N_MILLIS(150)
+  // {
+  //   Serial.println("pitch: " + String(data.ch[TX_PITCH]) + ", roll: " + String(data.ch[TX_ROLL]) + ", pitchOffset: " + String(pitchOffset) + ", stickDistFromCenter: " + String(stickDistFromCenter) + ", motorStrength: " + String(motorStrength) + ", mix: " + String(mix) + ", motor1Val: " + String(motor1Val) + ", motor2Val: " + String(motor2Val));
+  // }
 }
 
 void driveMotors()

@@ -22,9 +22,9 @@ BODY_STATE bodyState = BOTH_NOODS;
 // implement some kind of unique visual feedback for when the connection is lost or established.
 enum CONNECTION_STATE
 {
-  DISCONNECTED,
-  CONNECTION_ESTABLISHED,
-  CONNECTION_LOST,
-  CONNECTED
+  DISCONNECTED = 0,
+  CONNECTION_ESTABLISHED = 1,
+  CONNECTION_LOST = 2,
+  CONNECTED = 3
 };
 CONNECTION_STATE connectionState = DISCONNECTED;

@@ -82,22 +82,22 @@ void checkIncomingSerial()
         char inChar = Serial.read();
         switch (inChar)
         {
-        case '1':
+        case '1': // nood1a
             channelToPrint = 0;
             break;
-        case '2':
+        case '2': // nood1b
             channelToPrint = 1;
             break;
-        case '3':
+        case '3': // nood2a
             channelToPrint = 2;
             break;
-        case '4':
+        case '4': // nood2b
             channelToPrint = 3;
             break;
-        case 'a':
+        case 'a': // all noods
             channelToPrint = 100;
             break;
-        case 'x':
+        case 'x': // nothing
             channelToPrint = 255;
             break;
         }
