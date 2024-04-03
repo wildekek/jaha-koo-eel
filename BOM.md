@@ -10,6 +10,7 @@
 | 1        | Motor Mount       | Transparent  |
 | 1        | Head Upper        | Transparent  |
 | 1        | Head Lower        | Transparent  |
+| 1        | Switch cap        | Transparent  |
 | 2        | Eye Light Guide   | Black        |
 | 2        | Mouth Light Guide | Black        |
 | 2        | Front Wheel       | Transparent  |
