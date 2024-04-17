@@ -2,8 +2,8 @@
 #include <Wire.h>
 #include <FastLED.h>
 
-#define NUM_LEDS 2
-#define DATA_PIN D0
+#define NUM_LEDS 3
+#define DATA_PIN D9
 
 CRGB leds[NUM_LEDS];
 

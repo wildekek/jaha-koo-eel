@@ -3,8 +3,8 @@
 #include <Adafruit_NeoPixel.h>
 #include <FastLED.h>
 
-#define PIN D8 // On Trinket or Gemma, suggest changing this to 1
-#define NUMPIXELS 2 // Popular NeoPixel ring size
+#define PIN D9      // On Trinket or Gemma, suggest changing this to 1
+#define NUMPIXELS 3 // Popular NeoPixel ring size
 
 // When setting up the NeoPixel library, we tell it how many pixels,
 // and which pin to use to send signals. Note that for older NeoPixel
