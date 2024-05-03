@@ -76,7 +76,7 @@ uint8_t crsf_crc8(const uint8_t *ptr, uint8_t len) {
 // Serial begin
 void CRSF::begin() {
     // port.begin(SERIAL_BAUDRATE);
-    port.begin(SERIAL_BAUDRATE, SERIAL_8N1, 37, 39, false);
+    port.begin(SERIAL_BAUDRATE, SERIAL_8N1, 37, 39, false); // wemos esp32s2
 }
 
 // prepare data packet
