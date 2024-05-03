@@ -74,7 +74,7 @@ uint16_t bitmashed_outs[] = {0, 0, 0, 0};
 
 // this is the value amount that we subtract from 127, to allow some deadband between the nood values.
 // Effectively, determines the resolution of the noods. 0 is no deadband, 127 is max deadband.
-#define NOOD_VALUES_TRANSMISSION_BANDWIDTH 16
+#define NOOD_VALUES_TRANSMISSION_BANDWIDTH 24
 
 uint16_t n00dSegmentIdentifiers[] = {512, 640, 768, 896}; // corresponds to upper bits 100, 101, 110, 111
 byte n00dSegmentMaxValue = (127 - NOOD_VALUES_TRANSMISSION_BANDWIDTH); // was 55 (== 63 - 8) -> maybe try 127 - 16? -> update: yes, this works fine!
@@ -267,7 +267,7 @@ void checkIncomingSerial()
       channelToPrint = 3;
       break;
     case 'a':
-      Serial.println("Outputting only nood1a");
+      Serial.println("Outputting all noods");
       channelToPrint = 255;
       break;
     case 's':

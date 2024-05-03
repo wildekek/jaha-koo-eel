@@ -87,6 +87,12 @@ void updateHeadLightValues()
         // pixels.setPixelColor(LEFT_EYE, pixels.Color(audioVal, audioVal, audioVal));
         //*/
         break;
+    case STATE_4:
+        rgbLeds[RIGHT_EYE] = pixels.Color(0, eyesBaseVal, 0);
+        rgbLeds[LEFT_EYE] = pixels.Color(0, eyesBaseVal, 0);
+        rgbLeds[MOUTH] = pixels.ColorHSV(hue360ToNeopixelHue(315), 127, mouthBaseVal + map(audioVal, 0, 255, 0, (255 - mouthBaseVal)));
+
+        break;
     }
     // pixels.show(); // Send the updated pixel colors to the hardware.
 }
