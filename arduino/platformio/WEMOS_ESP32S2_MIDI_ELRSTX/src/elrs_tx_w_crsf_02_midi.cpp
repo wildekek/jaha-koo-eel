@@ -572,6 +572,14 @@ void setup()
 
     calibrationReset();
     calibrationLoad();
+
+    // Set channels [0-4] (ie override left/right motor and left/right eye).
+    // Channel order: AETR
+    rcChannels[AILERON] = (CRSF_DIGITAL_CHANNEL_MIN + CRSF_DIGITAL_CHANNEL_MAX) / 2;
+    rcChannels[ELEVATOR] = (CRSF_DIGITAL_CHANNEL_MIN + CRSF_DIGITAL_CHANNEL_MAX) / 2;
+    rcChannels[THROTTLE] = CRSF_DIGITAL_CHANNEL_MIN;
+    rcChannels[RUDDER] = CRSF_DIGITAL_CHANNEL_MIN;
+
 }
 
 void loop()
@@ -763,7 +771,7 @@ void loop()
     }
 
     // read any new MIDI messages
-    // DO NOT INTRODUCE A DELAY -> the usbMIDI.read() needs to be called rapidly from loop()
+    // DO NOT USE 'DELAY()' -> the usbMIDI.read() needs to be called rapidly from loop()
     MIDI.read();
 }
 
