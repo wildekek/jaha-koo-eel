@@ -60,7 +60,7 @@ void updateBodyLightValues()
 
   // if (throttle & (0x1 << 9)) // 512
   // if (throttle & n00dSegmentIdentifiers[0] == n00dSegmentIdentifiers[0]) // 512
-  if (throttle >> 7 == 0x4) // 0b100
+  if (throttle >> 7 == 0x4) // 0b100 aka nood1a
   {
     // throttleAdjusted = throttle - (throttle >> 5);
     throttleAdjusted = throttle - 9;
@@ -69,7 +69,7 @@ void updateBodyLightValues()
   }
   // if (throttle & (0x1 << 8)) // 256
   // if (throttle & n00dSegmentIdentifiers[1] == n00dSegmentIdentifiers[1]) // 640
-  if (throttle >> 7 == 0x5) // 0b101
+  if (throttle >> 7 == 0x5) // 0b101 aka nood1b
   {
     // throttle -= throttle - (throttle >> 5);
     throttleAdjusted = throttle - 10;
@@ -78,7 +78,7 @@ void updateBodyLightValues()
   }
   // if (throttle & (0x1 << 7)) // 128
   // if (throttle & n00dSegmentIdentifiers[2] == n00dSegmentIdentifiers[2]) // 768
-  if (throttle >> 7 == 0x6) // 0b110
+  if (throttle >> 7 == 0x6) // 0b110 aka nood2a
   {
     throttleAdjusted = throttle - 9;
     n00d2a = (throttle & 0x7F) - 9;
@@ -86,7 +86,7 @@ void updateBodyLightValues()
   }
   // if (throttle & (0x1 << 6)) // 64
   // if (throttle & n00dSegmentIdentifiers[3] == n00dSegmentIdentifiers[3]) // 896
-  if (throttle >> 7 == 0x7) // 0b111
+  if (throttle >> 7 == 0x7) // 0b111 aka nood2b
   {
     throttleAdjusted = throttle - 9;
     n00d2b = (throttle & 0x7F) - 9;
@@ -98,6 +98,7 @@ void updateBodyLightValues()
   noodVals[2] = n00d2a;
   noodVals[3] = n00d2b;
 
+  // smoothed values
   noodAvgVals[0] = 0.85 * noodAvgVals[0] + 0.15 * noodVals[0];
   noodAvgVals[1] = 0.85 * noodAvgVals[1] + 0.15 * noodVals[1];
   noodAvgVals[2] = 0.85 * noodAvgVals[2] + 0.15 * noodVals[2];
